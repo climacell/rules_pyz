@@ -375,7 +375,7 @@ sys.path = new_paths
 # filter these paths from any modules: in particular, these could be namespace packages
 # from .pth files that the site module executed
 remove_modules = set()
-for name, module in sys.modules.iteritems():
+for name, module in sys.modules.items():
     paths = getattr(module, '__path__', None)
     if paths is not None:
         module.__path__ = [p for p in paths if not is_site_packages_path(p)]
@@ -398,7 +398,7 @@ def _get_package_path(path):
 
 def _get_package_data(path):
     path = _get_package_path(path)
-    return __loader__.get_data(path)
+    return __loader__.get_data(path).decode()
 
 
 def _read_package_info():
@@ -414,7 +414,7 @@ def _copy_as_namespace(tempdir, unzipped_dir):
     output_path = os.path.join(tempdir, init_path)
     with open(os.path.join(tempdir, unzipped_dir, '__init__.py'), 'w') as f:
         try:
-            data = __loader__.get_data(init_path)
+            data = __loader__.get_data(init_path).decode()
             # from future imports must be the first statement in __init__.py: insert our line after
             # this must be after any comments and doc comments
             # TODO: maybe we should do this at "build" time?
@@ -556,7 +556,7 @@ clean_globals['__file__'] = script_path
 ast = compile(script_data, script_path, 'exec', flags=0, dont_inherit=1)
 
 # execute the script with a clean state (no imports or variables)
-exec ast in clean_globals
+exec(ast, clean_globals)
 {{else}}
 import runpy
 runpy.run_module('{{.EntryPoint}}', run_name='__main__')
