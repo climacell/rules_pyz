@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"text/template"
@@ -16,6 +17,9 @@ import (
 const zipMethod = zip.Store
 const defaultInterpreterLine = "/usr/bin/env python2.7"
 const zipInfoPath = "_zip_info_.json"
+
+var purelibRe = regexp.MustCompile("[^/]*-[\\.0-9]*\\.data/purelib/")
+var platlibRe = regexp.MustCompile("[^/]*-[\\.0-9]*\\.data/platlib/")
 
 type manifestSource struct {
 	Src string
@@ -46,6 +50,15 @@ type packageInfo struct {
 
 func isPyFile(path string) bool {
 	return strings.HasSuffix(path, ".py") || strings.HasSuffix(path, ".pyc") || strings.HasSuffix(path, ".pyo")
+}
+
+// Takes e.g. "numpy-1.14.2.data/purelib/blah/stuff.py" and returns "blah/stuff.py". See
+// https://www.python.org/dev/peps/pep-0427/#what-s-the-deal-with-purelib-vs-platlib.
+func handlePurelibPlatlib(path string) string {
+	newPath := path
+	newPath = purelibRe.ReplaceAllLiteralString(newPath, "")
+	newPath = platlibRe.ReplaceAllLiteralString(newPath, "")
+	return newPath
 }
 
 // Returns the list of paths that need to be unzipped.
@@ -238,11 +251,18 @@ func main() {
 			panic(err)
 		}
 		for _, wheelF := range reader.File {
+			// Handle code stored in <package>-<version>.data/purelib or platlib. See
+			// https://www.python.org/dev/peps/pep-0427/#what-s-the-deal-with-purelib-vs-platlib.
+			pathWithinOutputZip := handlePurelibPlatlib(wheelF.Name)
+			// if wheelF.Name != pathWithinOutputZip {
+			// 	  fmt.Fprintln(os.Stderr, "  pathWithinOutputZip, orig: ", wheelF.Name)
+			// 	  fmt.Fprintln(os.Stderr, "  pathWithinOutputZip, repl: ", pathWithinOutputZip)
+			// }
 			wheelFReader, err := wheelF.Open()
 			if err != nil {
 				panic(err)
 			}
-			copyF, err := zipWriter.CreateWithMethod(wheelF.FileInfo(), wheelF.Name, zipMethod)
+			copyF, err := zipWriter.CreateWithMethod(wheelF.FileInfo(), pathWithinOutputZip, zipMethod)
 			if err != nil {
 				panic(err)
 			}
