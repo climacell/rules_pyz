@@ -81,7 +81,11 @@ func TestZipWriter(t *testing.T) {
 		if zw.Contains(path) {
 			t.Error("should not contain path: ", path)
 		}
-		_, err = zw.CreateWithMethod(path, zip.Store)
+		fileInfo, err := tempFile.Stat()
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = zw.CreateWithMethod(fileInfo, path, zip.Store)
 		if err != nil {
 			t.Fatal(err)
 		}

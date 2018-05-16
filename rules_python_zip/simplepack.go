@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"text/template"
@@ -16,6 +17,9 @@ import (
 const zipMethod = zip.Store
 const defaultInterpreterLine = "/usr/bin/env python2.7"
 const zipInfoPath = "_zip_info_.json"
+
+var purelibRe = regexp.MustCompile("[^/]*-[\\.0-9]*\\.data/purelib/")
+var platlibRe = regexp.MustCompile("[^/]*-[\\.0-9]*\\.data/platlib/")
 
 type manifestSource struct {
 	Src string
@@ -46,6 +50,15 @@ type packageInfo struct {
 
 func isPyFile(path string) bool {
 	return strings.HasSuffix(path, ".py") || strings.HasSuffix(path, ".pyc") || strings.HasSuffix(path, ".pyo")
+}
+
+// Takes e.g. "numpy-1.14.2.data/purelib/blah/stuff.py" and returns "blah/stuff.py". See
+// https://www.python.org/dev/peps/pep-0427/#what-s-the-deal-with-purelib-vs-platlib.
+func handlePurelibPlatlib(path string) string {
+	newPath := path
+	newPath = purelibRe.ReplaceAllLiteralString(newPath, "")
+	newPath = platlibRe.ReplaceAllLiteralString(newPath, "")
+	return newPath
 }
 
 // Returns the list of paths that need to be unzipped.
@@ -121,7 +134,7 @@ func (c *cachedPathsZipWriter) CreateWithMethod(
 // Returns the paths written to this zip so far.
 func (c *cachedPathsZipWriter) Paths() []string {
 	out := []string{}
-	for path, _ := range c.paths {
+	for path := range c.paths {
 		out = append(out, path)
 	}
 	// ensure deterministic output
@@ -238,11 +251,18 @@ func main() {
 			panic(err)
 		}
 		for _, wheelF := range reader.File {
+			// Handle code stored in <package>-<version>.data/purelib or platlib. See
+			// https://www.python.org/dev/peps/pep-0427/#what-s-the-deal-with-purelib-vs-platlib.
+			pathWithinOutputZip := handlePurelibPlatlib(wheelF.Name)
+			// if wheelF.Name != pathWithinOutputZip {
+			// 	  fmt.Fprintln(os.Stderr, "  pathWithinOutputZip, orig: ", wheelF.Name)
+			// 	  fmt.Fprintln(os.Stderr, "  pathWithinOutputZip, repl: ", pathWithinOutputZip)
+			// }
 			wheelFReader, err := wheelF.Open()
 			if err != nil {
 				panic(err)
 			}
-			copyF, err := zipWriter.CreateWithMethod(wheelF.FileInfo(), wheelF.Name, zipMethod)
+			copyF, err := zipWriter.CreateWithMethod(wheelF.FileInfo(), pathWithinOutputZip, zipMethod)
 			if err != nil {
 				panic(err)
 			}
@@ -266,7 +286,7 @@ func main() {
 	// It also makes "implicit" namespace packages work with Python2.7, without executing
 	// .pth files
 	dirsWithPython := map[string]bool{}
-	for path, _ := range zipWriter.paths {
+	for path := range zipWriter.paths {
 		if isPyFile(path) {
 			dir := filepath.Dir(path)
 			for dir != "." && !dirsWithPython[dir] {
@@ -276,7 +296,7 @@ func main() {
 		}
 	}
 	createInitPyPaths := []string{}
-	for dirWithPython, _ := range dirsWithPython {
+	for dirWithPython := range dirsWithPython {
 		initPyPath := dirWithPython + "/__init__.py"
 		if !zipWriter.paths[initPyPath] {
 			createInitPyPaths = append(createInitPyPaths, initPyPath)
@@ -358,6 +378,8 @@ import os
 import sys
 import zipimport
 
+_PY3 = sys.version_info >= (3, 0)
+
 
 # TODO: Implement better sys.path cleaning
 new_paths = []
@@ -396,9 +418,16 @@ def _get_package_path(path):
     return path
 
 
+def _load_data(path):
+    data = __loader__.get_data(path)
+    if _PY3:
+        return data.decode()
+    return data
+
+
 def _get_package_data(path):
     path = _get_package_path(path)
-    return __loader__.get_data(path).decode()
+    return _load_data(path)
 
 
 def _read_package_info():
@@ -414,7 +443,7 @@ def _copy_as_namespace(tempdir, unzipped_dir):
     output_path = os.path.join(tempdir, init_path)
     with open(os.path.join(tempdir, unzipped_dir, '__init__.py'), 'w') as f:
         try:
-            data = __loader__.get_data(init_path).decode()
+            data = _load_data(init_path)
             # from future imports must be the first statement in __init__.py: insert our line after
             # this must be after any comments and doc comments
             # TODO: maybe we should do this at "build" time?
