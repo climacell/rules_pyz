@@ -109,10 +109,10 @@ func (w *wheelInfo) bazelTarget(workspacePrefix *string) string {
 	if w.useLocalWheel {
 		// We make `filegroup` targets for locally downloaded wheels.
 		return fmt.Sprintf(":%s", w.bazelWorkspaceName(workspacePrefix))
-	} else {
-		// We use `http_file` repository rules for wheels available directly from PyPI.
-		return fmt.Sprintf("@%s//file", w.bazelWorkspaceName(workspacePrefix))
 	}
+	// We use `http_file` repository rules for wheels available directly from PyPI.
+	return fmt.Sprintf("@%s//file", w.bazelWorkspaceName(workspacePrefix))
+
 }
 
 type wheelsByPlatform []wheelInfo
@@ -203,6 +203,7 @@ func wheelDependencies(pythonPath string, wheelToolPath string, path string) ([]
 	wheelToolProcess.Stderr = os.Stderr
 	outputBytes, err := wheelToolProcess.Output()
 	if err != nil {
+		fmt.Printf("wheeltool failed on wheel %s; output:\n%s", path, outputBytes)
 		return nil, nil, err
 	}
 	end := time.Now()
@@ -210,6 +211,7 @@ func wheelDependencies(pythonPath string, wheelToolPath string, path string) ([]
 	output := &wheelToolOutput{}
 	err = json.Unmarshal(outputBytes, output)
 	if err != nil {
+		fmt.Printf("Failed to parse wheeltool for wheel %s, output:\n%s", path, output)
 		return nil, nil, err
 	}
 	return output.Requires, output.Extras, nil
@@ -520,7 +522,7 @@ func main() {
 
 		// ensure output is reproducible: output extras in the same order
 		extraNames := []string{}
-		for extraName, _ := range dependency.wheels[0].extras {
+		for extraName := range dependency.wheels[0].extras {
 			extraNames = append(extraNames, extraName)
 		}
 		sort.Strings(extraNames)
