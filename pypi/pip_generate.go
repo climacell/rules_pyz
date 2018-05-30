@@ -28,7 +28,7 @@ const pypiRulesHeader = `# AUTO GENERATED. DO NOT EDIT DIRECTLY.
 #     %s
 
 load("%s", "%s")
-` + "\n"
+`
 
 var pipLogLinkPattern = regexp.MustCompile(`^\s*(Found|Skipping) link\s*(http[^ #]+\.whl)`)
 
