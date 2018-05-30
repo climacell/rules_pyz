@@ -413,7 +413,7 @@ func main() {
 		bazelPlatform := bazelPlatform(entry.Name())
 		if bazelPlatform != "" {
 			// attempt to find all other platform wheels
-			matchedPlatforms := map[string]string{}
+			platformToWheelLink := map[string]string{}
 			matchPrefix := packageName + "-" + version + "-"
 			for wheelFile, link := range wheelFilenameToLink {
 				if strings.HasPrefix(wheelFile, matchPrefix) {
@@ -422,21 +422,23 @@ func main() {
 							continue
 						}
 						if strings.Contains(wheelFile, pyPIPlatform.pyPIPlatform) {
-							if matchedPlatforms[pyPIPlatform.bazelPlatform] != "" {
+							existingWheelLink := platformToWheelLink[pyPIPlatform.bazelPlatform]
+							if existingWheelLink != "" {
+								fmt.Fprintf(os.Stderr, "Error: multiple wheels for platform %s: %s, %s", pyPIPlatform.bazelPlatform, existingWheelLink, link)
 								panic("found duplicate wheels for platform")
 							}
-							matchedPlatforms[pyPIPlatform.bazelPlatform] = link
+							platformToWheelLink[pyPIPlatform.bazelPlatform] = link
 						}
 					}
 				}
 			}
-			if len(matchedPlatforms)+1 != len(pyPIPlatforms) {
+			if len(platformToWheelLink)+1 != len(pyPIPlatforms) {
 				fmt.Fprintf(os.Stderr, "WARNING: could not find all platforms for %s; needs compilation?\n",
 					entry.Name())
 			}
 
 			// download the other platforms and add info for those wheels
-			for _, link := range matchedPlatforms {
+			for _, link := range platformToWheelLink {
 				// download this PyPI wheel
 				filePart := filepath.Base(link)
 				destPath := path.Join(tempDir, filePart)
