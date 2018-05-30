@@ -32,7 +32,7 @@ load("%s", "%s")
 
 var pipLogLinkPattern = regexp.MustCompile(`^\s*(Found|Skipping) link\s*(http[^ #]+\.whl)`)
 
-var pyPIPlatforms = []struct {
+var platformDefs = []struct {
 	bazelPlatform string
 	// https://www.python.org/dev/peps/pep-0425/
 	pyPIPlatform string
@@ -219,9 +219,9 @@ func wheelDependencies(pythonPath string, wheelToolPath string, path string) ([]
 }
 
 func bazelPlatform(filename string) string {
-	for _, platformDefinition := range pyPIPlatforms {
-		if strings.Contains(filename, platformDefinition.pyPIPlatform) {
-			return platformDefinition.bazelPlatform
+	for _, platformDef := range platformDefs {
+		if strings.Contains(filename, platformDef.pyPIPlatform) {
+			return platformDef.bazelPlatform
 		}
 	}
 	return ""
@@ -417,27 +417,31 @@ func main() {
 			matchPrefix := packageName + "-" + version + "-"
 			for wheelFile, link := range wheelFilenameToLink {
 				if strings.HasPrefix(wheelFile, matchPrefix) {
-					for _, pyPIPlatform := range pyPIPlatforms {
-						if pyPIPlatform.bazelPlatform == bazelPlatform {
+					for _, platformDef := range platformDefs {
+						if platformDef.bazelPlatform == bazelPlatform {
 							continue
 						}
-						if strings.Contains(wheelFile, pyPIPlatform.pyPIPlatform) {
-							existingWheelLink := platformToWheelLink[pyPIPlatform.bazelPlatform]
+						if strings.Contains(wheelFile, platformDef.pyPIPlatform) {
+							existingWheelLink := platformToWheelLink[platformDef.bazelPlatform]
 							if existingWheelLink != "" {
-								fmt.Fprintf(os.Stderr, "Error: multiple wheels for platform %s: %s, %s", pyPIPlatform.bazelPlatform, existingWheelLink, link)
-								panic("found duplicate wheels for platform")
+								// There are two versions. Need to pick one. For
+								// now, just pick alphabetically largest to ensure
+								// determinism.
+								if link < existingWheelLink {
+									link = existingWheelLink
+								}
 							}
-							platformToWheelLink[pyPIPlatform.bazelPlatform] = link
+							platformToWheelLink[platformDef.bazelPlatform] = link
 						}
 					}
 				}
 			}
-			if len(platformToWheelLink)+1 != len(pyPIPlatforms) {
-				fmt.Fprintf(os.Stderr, "WARNING: could not find all platforms for %s; needs compilation?\n",
+			if len(platformToWheelLink)+1 != len(platformDefs) {
+				fmt.Fprintf(os.Stderr, "WARNING: could not find all platformDefs for %s; needs compilation?\n",
 					entry.Name())
 			}
 
-			// download the other platforms and add info for those wheels
+			// download the other platformDefs and add info for those wheels
 			for _, link := range platformToWheelLink {
 				// download this PyPI wheel
 				filePart := filepath.Base(link)
