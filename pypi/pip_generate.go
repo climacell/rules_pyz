@@ -427,8 +427,14 @@ func main() {
 								// There are two versions. Need to pick one. For
 								// now, just pick alphabetically largest to ensure
 								// determinism.
+								fmt.Fprintf(os.Stderr, "Warning: two acceptable wheels found")
 								if link < existingWheelLink {
+									fmt.Fprintf(os.Stderr, "...picking %s instead of %s",
+										existingWheelLink, link)
 									link = existingWheelLink
+								} else {
+									fmt.Fprintf(os.Stderr, "...picking %s instead of %s",
+										link, existingWheelLink)
 								}
 							}
 							platformToWheelLink[platformDef.bazelPlatform] = link
@@ -437,7 +443,7 @@ func main() {
 				}
 			}
 			if len(platformToWheelLink)+1 != len(platformDefs) {
-				fmt.Fprintf(os.Stderr, "WARNING: could not find all platformDefs for %s; needs compilation?\n",
+				fmt.Fprintf(os.Stderr, "Warning: could not find all platformDefs for %s; needs compilation?\n",
 					entry.Name())
 			}
 
