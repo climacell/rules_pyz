@@ -376,6 +376,7 @@ func main() {
 	pipEnd := time.Now()
 	fmt.Printf("pip executed in %v\n", pipEnd.Sub(pipStart).String())
 
+	fmt.Printf("Processing downloaded wheels...\n")
 	dirEntries, err := ioutil.ReadDir(tempDir)
 	if err != nil {
 		panic(err)
@@ -598,4 +599,6 @@ func main() {
 	if !wroteAtLeastOne {
 		fmt.Fprintln(outputBzlFile, "    pass")
 	}
+
+	fmt.Printf("Done\n")
 }
