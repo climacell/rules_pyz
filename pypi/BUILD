@@ -61,6 +61,7 @@ py_binary(
         ":wheeltool",
         "//tools:pip_generate",
     ],
+    visibility = ["//visibility:public"],
 )
 
 # checks tool path

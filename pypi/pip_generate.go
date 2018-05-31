@@ -28,11 +28,11 @@ const pypiRulesHeader = `# AUTO GENERATED. DO NOT EDIT DIRECTLY.
 #     %s
 
 load("%s", "%s")
-` + "\n"
+`
 
 var pipLogLinkPattern = regexp.MustCompile(`^\s*(Found|Skipping) link\s*(http[^ #]+\.whl)`)
 
-var pyPIPlatforms = []struct {
+var platformDefs = []struct {
 	bazelPlatform string
 	// https://www.python.org/dev/peps/pep-0425/
 	pyPIPlatform string
@@ -198,7 +198,7 @@ type wheelToolOutput struct {
 	Extras   map[string][]string `json:"extras"`
 }
 
-func wheelDependencies(pythonPath string, wheelToolPath string, path string) ([]string, map[string][]string, error) {
+func wheelDependencies(pythonPath string, wheelToolPath string, path string, verbose bool) ([]string, map[string][]string, error) {
 	start := time.Now()
 	wheelToolProcess := exec.Command(pythonPath, wheelToolPath, path)
 	wheelToolProcess.Stderr = os.Stderr
@@ -208,7 +208,9 @@ func wheelDependencies(pythonPath string, wheelToolPath string, path string) ([]
 		return nil, nil, err
 	}
 	end := time.Now()
-	fmt.Printf("wheeltool %s took %s\n", filepath.Base(path), end.Sub(start).String())
+	if verbose {
+		fmt.Printf("wheeltool %s took %s\n", filepath.Base(path), end.Sub(start).String())
+	}
 	output := &wheelToolOutput{}
 	err = json.Unmarshal(outputBytes, output)
 	if err != nil {
@@ -219,9 +221,9 @@ func wheelDependencies(pythonPath string, wheelToolPath string, path string) ([]
 }
 
 func bazelPlatform(filename string) string {
-	for _, platformDefinition := range pyPIPlatforms {
-		if strings.Contains(filename, platformDefinition.pyPIPlatform) {
-			return platformDefinition.bazelPlatform
+	for _, platformDef := range platformDefs {
+		if strings.Contains(filename, platformDef.pyPIPlatform) {
+			return platformDef.bazelPlatform
 		}
 	}
 	return ""
@@ -332,7 +334,7 @@ func main() {
 		panic(err)
 	}
 	pipProcess.Stderr = os.Stderr
-	fmt.Println("running pip to resolve dependencies ...")
+	fmt.Println("Running pip to resolve dependencies...")
 	if *verbose {
 		fmt.Printf("  command: %s %s\n", *pythonPath, strings.Join(pipProcess.Args, " "))
 	}
@@ -374,6 +376,7 @@ func main() {
 	pipEnd := time.Now()
 	fmt.Printf("pip executed in %v\n", pipEnd.Sub(pipStart).String())
 
+	fmt.Printf("Processing downloaded wheels...\n")
 	dirEntries, err := ioutil.ReadDir(tempDir)
 	if err != nil {
 		panic(err)
@@ -413,30 +416,42 @@ func main() {
 		bazelPlatform := bazelPlatform(entry.Name())
 		if bazelPlatform != "" {
 			// attempt to find all other platform wheels
-			matchedPlatforms := map[string]string{}
+			platformToWheelLink := map[string]string{}
 			matchPrefix := packageName + "-" + version + "-"
 			for wheelFile, link := range wheelFilenameToLink {
 				if strings.HasPrefix(wheelFile, matchPrefix) {
-					for _, pyPIPlatform := range pyPIPlatforms {
-						if pyPIPlatform.bazelPlatform == bazelPlatform {
+					for _, platformDef := range platformDefs {
+						if platformDef.bazelPlatform == bazelPlatform {
 							continue
 						}
-						if strings.Contains(wheelFile, pyPIPlatform.pyPIPlatform) {
-							if matchedPlatforms[pyPIPlatform.bazelPlatform] != "" {
-								panic("found duplicate wheels for platform")
+						if strings.Contains(wheelFile, platformDef.pyPIPlatform) {
+							existingWheelLink := platformToWheelLink[platformDef.bazelPlatform]
+							if existingWheelLink != "" {
+								// There are two versions. Need to pick one. For
+								// now, just pick alphabetically largest to ensure
+								// determinism.
+								fmt.Fprintf(os.Stderr, "Warning: two acceptable wheels found\n")
+								if link < existingWheelLink {
+									fmt.Fprintf(os.Stderr, "...picking %s instead of %s\n",
+										filepath.Base(existingWheelLink), filepath.Base(link))
+									link = existingWheelLink
+								} else {
+									fmt.Fprintf(os.Stderr, "...picking %s instead of %s\n",
+										filepath.Base(link), filepath.Base(existingWheelLink))
+								}
 							}
-							matchedPlatforms[pyPIPlatform.bazelPlatform] = link
+							platformToWheelLink[platformDef.bazelPlatform] = link
 						}
 					}
 				}
 			}
-			if len(matchedPlatforms)+1 != len(pyPIPlatforms) {
-				fmt.Fprintf(os.Stderr, "WARNING: could not find all platforms for %s; needs compilation?\n",
+			if len(platformToWheelLink)+1 != len(platformDefs) {
+				fmt.Fprintf(os.Stderr, "Warning: could not find all platformDefs for %s; needs compilation?\n",
 					entry.Name())
 			}
 
-			// download the other platforms and add info for those wheels
-			for _, link := range matchedPlatforms {
+			// download the other platformDefs and add info for those wheels
+			for _, link := range platformToWheelLink {
 				// download this PyPI wheel
 				filePart := filepath.Base(link)
 				destPath := path.Join(tempDir, filePart)
@@ -469,7 +484,7 @@ func main() {
 				panic(err)
 			}
 
-			deps, extras, err := wheelDependencies(*pythonPath, *wheelToolPath, partialInfo.filePath)
+			deps, extras, err := wheelDependencies(*pythonPath, *wheelToolPath, partialInfo.filePath, *verbose)
 			if err != nil {
 				panic(err)
 			}
@@ -584,4 +599,6 @@ func main() {
 	if !wroteAtLeastOne {
 		fmt.Fprintln(outputBzlFile, "    pass")
 	}
+
+	fmt.Printf("Done\n")
 }
