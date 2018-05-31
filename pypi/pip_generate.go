@@ -427,14 +427,14 @@ func main() {
 								// There are two versions. Need to pick one. For
 								// now, just pick alphabetically largest to ensure
 								// determinism.
-								fmt.Fprintf(os.Stderr, "Warning: two acceptable wheels found")
+								fmt.Fprintf(os.Stderr, "Warning: two acceptable wheels found\n")
 								if link < existingWheelLink {
-									fmt.Fprintf(os.Stderr, "...picking %s instead of %s",
-										existingWheelLink, link)
+									fmt.Fprintf(os.Stderr, "...picking %s instead of %s\n",
+										filepath.Base(existingWheelLink), filepath.Base(link))
 									link = existingWheelLink
 								} else {
-									fmt.Fprintf(os.Stderr, "...picking %s instead of %s",
-										link, existingWheelLink)
+									fmt.Fprintf(os.Stderr, "...picking %s instead of %s\n",
+										filepath.Base(link), filepath.Base(existingWheelLink))
 								}
 							}
 							platformToWheelLink[platformDef.bazelPlatform] = link
