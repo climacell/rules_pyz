@@ -198,7 +198,7 @@ type wheelToolOutput struct {
 	Extras   map[string][]string `json:"extras"`
 }
 
-func wheelDependencies(pythonPath string, wheelToolPath string, path string) ([]string, map[string][]string, error) {
+func wheelDependencies(pythonPath string, wheelToolPath string, path string, verbose bool) ([]string, map[string][]string, error) {
 	start := time.Now()
 	wheelToolProcess := exec.Command(pythonPath, wheelToolPath, path)
 	wheelToolProcess.Stderr = os.Stderr
@@ -208,7 +208,9 @@ func wheelDependencies(pythonPath string, wheelToolPath string, path string) ([]
 		return nil, nil, err
 	}
 	end := time.Now()
-	fmt.Printf("wheeltool %s took %s\n", filepath.Base(path), end.Sub(start).String())
+	if verbose {
+		fmt.Printf("wheeltool %s took %s\n", filepath.Base(path), end.Sub(start).String())
+	}
 	output := &wheelToolOutput{}
 	err = json.Unmarshal(outputBytes, output)
 	if err != nil {
@@ -332,7 +334,7 @@ func main() {
 		panic(err)
 	}
 	pipProcess.Stderr = os.Stderr
-	fmt.Println("running pip to resolve dependencies ...")
+	fmt.Println("Running pip to resolve dependencies...")
 	if *verbose {
 		fmt.Printf("  command: %s %s\n", *pythonPath, strings.Join(pipProcess.Args, " "))
 	}
@@ -481,7 +483,7 @@ func main() {
 				panic(err)
 			}
 
-			deps, extras, err := wheelDependencies(*pythonPath, *wheelToolPath, partialInfo.filePath)
+			deps, extras, err := wheelDependencies(*pythonPath, *wheelToolPath, partialInfo.filePath, *verbose)
 			if err != nil {
 				panic(err)
 			}
