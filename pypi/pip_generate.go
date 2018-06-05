@@ -302,6 +302,7 @@ func main() {
 		"Path to tool to output requirements from a wheel")
 	pythonPath := flag.String("pythonPath", "python", "Path to version of Python to use when running pip")
 	workspacePrefix := flag.String("workspacePrefix", "pypi_", "Prefix for generated repo rules")
+	shouldDeleteUnusedWheels := flag.Bool("deleteUnusedWheels", false, "Whether to delete wheels in `wheelDir` that are no longer used")
 	flag.Parse()
 	if *requirements == "" || *outputDir == "" {
 		fmt.Fprintln(os.Stderr, "Error: -requirements and -outputDir are required")
@@ -641,5 +642,31 @@ func main() {
 		fmt.Fprintln(outputBzlFile, "    pass")
 	}
 
+	if *shouldDeleteUnusedWheels {
+		deleteUnusedWheels(dependencies, path.Join(*outputDir, *wheelDir))
+	}
+
 	fmt.Printf("Done\n")
+}
+
+func deleteUnusedWheels(dependencies []pyPIDependency, absWheelDir string) {
+	// No, go does not have a `set` type. :/
+	wheelsThatShouldExist := map[string]bool{}
+	for _, dependency := range dependencies {
+		for _, wheel := range dependency.wheels {
+			wheelsThatShouldExist[wheel.filePath] = true
+		}
+	}
+
+	wheelPaths, err := filepath.Glob(path.Join(absWheelDir, "*"))
+	if err != nil {
+		panic(err)
+	}
+	for _, wheelPath := range wheelPaths {
+		_, present := wheelsThatShouldExist[wheelPath]
+		if !present {
+			fmt.Fprintf(os.Stderr, "Deleting unused wheel: %s\n", wheelPath)
+			os.Remove(wheelPath)
+		}
+	}
 }
