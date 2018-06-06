@@ -298,8 +298,8 @@ def pyz_repositories():
     if 'pypi_attrs' not in excludes:
         native.http_file(
             name = 'pypi_attrs',
-            url = 'https://pypi.python.org/packages/b5/60/4e178c1e790fd60f1229a9b3cb2f8bc2f4cc6ff2c8838054c142c70b5adc/attrs-17.4.0-py2.py3-none-any.whl',
-            sha256 = 'a17a9573a6f475c99b551c0e0a812707ddda1ec9653bed04c13841404ed6f450'
+            url = 'https://files.pythonhosted.org/packages/41/59/cedf87e91ed541be7957c501a92102f9cc6363c623a7666d69d51c78ac5b/attrs-18.1.0-py2.py3-none-any.whl',
+            sha256 = '4b90b09eeeb9b88c35bc642cbac057e45a5fd85367b985bd2809c62b7b939265',
         )
     if 'pypi_funcsigs' not in excludes:
         native.http_file(
