@@ -157,17 +157,17 @@ func pyPIToBazelPackageName(packageName string) string {
 }
 
 // Takes a PyPI dependency and returns just the package name part, without extras
-func dependencyPackageName(dependency string) string {
+func dependencyNormalizedPackageName(dependency string) string {
 	// PyPI packages can contain upper case characters, but are matched insensitively
-	dependency = strings.ToLower(dependency)
+	packageName := strings.ToLower(dependency)
 	// PyPI packages contain -, but the wheel and bazel names convert them to _
-	dependency = strings.Replace(dependency, "-", "_", -1)
+	packageName = strings.Replace(packageName, "-", "_", -1)
 
-	extraStart := strings.IndexByte(dependency, '[')
+	extraStart := strings.IndexByte(packageName, '[')
 	if extraStart >= 0 {
-		return dependency[:extraStart]
+		packageName = packageName[:extraStart]
 	}
-	return dependency
+	return normalizePackageName(packageName)
 }
 
 // Returns the wheel package name and version
@@ -254,6 +254,10 @@ func download(url string, path string) error {
 		return err2
 	}
 	return f.Close()
+}
+
+func normalizePackageName(packageName string) string {
+	return strings.ToLower(packageName)
 }
 
 func renameIfNotExists(oldPath string, newPath string) error {
@@ -494,7 +498,7 @@ func main() {
 		}
 
 		dependencies = append(dependencies, pyPIDependency{packageName, wheels})
-		installedPackages[packageName] = true
+		installedPackages[normalizePackageName(packageName)] = true
 	}
 
 	commandLineArguments := strings.Join(os.Args[1:], " ")
@@ -549,7 +553,7 @@ func main() {
 			// only include the extra if we have all the referenced packages
 			hasAllPackages := true
 			for _, dep := range extraDeps {
-				if !installedPackages[dependencyPackageName(dep)] {
+				if !installedPackages[dependencyNormalizedPackageName(dep)] {
 					hasAllPackages = false
 					break
 				}
