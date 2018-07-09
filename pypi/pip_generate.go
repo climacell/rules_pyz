@@ -173,10 +173,8 @@ func pyPIToBazelPackageName(packageName string) string {
 
 // Takes a PyPI dependency and returns just the package name part, without extras
 func dependencyNormalizedPackageName(dependency string) string {
-	// PyPI packages can contain upper case characters, but are matched insensitively
-	packageName := strings.ToLower(dependency)
 	// PyPI packages contain -, but the wheel and bazel names convert them to _
-	packageName = strings.Replace(packageName, "-", "_", -1)
+	packageName := strings.Replace(dependency, "-", "_", -1)
 
 	extraStart := strings.IndexByte(packageName, '[')
 	if extraStart >= 0 {
@@ -267,6 +265,7 @@ func download(url string, path string) error {
 	return f.Close()
 }
 
+// PyPI packages can contain upper case characters, but are matched insensitively
 func normalizePackageName(packageName string) string {
 	return strings.ToLower(packageName)
 }
