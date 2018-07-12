@@ -214,6 +214,7 @@ pyz_test(
     name="interpreter_test",
     srcs=["interpreter_test.py"],
     data=[":interpreter"],
+    args=["--tb=native"],
 )
 
 # Tests a complicated native code dependency

@@ -254,7 +254,7 @@ _pyz_script_test = rule(
 
 def pyz_test(name, srcs=[], deps=[], wheels=[], data=[], force_all_unzip=False,
     flaky=None, licenses=[], local=None, timeout=None, shard_count=None, size=None,
-    interpreter_path="", tags=[]):
+    interpreter_path="", tags=[], args=[]):
     '''Macro that outputs a pyz_binary with all the test code and executes it with a shell script
     to pass the correct arguments.'''
 
@@ -289,6 +289,7 @@ def pyz_test(name, srcs=[], deps=[], wheels=[], data=[], force_all_unzip=False,
         size = size,
         timeout = timeout,
         tags = tags,
+        args = args,
     )
 
 def pyz_repositories():
