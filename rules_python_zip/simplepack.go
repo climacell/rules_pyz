@@ -248,7 +248,7 @@ func main() {
 	for _, wheelPath := range zipManifest.Wheels {
 		reader, err := zip.OpenReader(wheelPath)
 		if err != nil {
-			panic(err)
+			panic(fmt.Errorf("Error loading %s: %#v", wheelPath, err))
 		}
 		for _, wheelF := range reader.File {
 			// Handle code stored in <package>-<version>.data/purelib or platlib. See
