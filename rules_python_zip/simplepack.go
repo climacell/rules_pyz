@@ -479,6 +479,7 @@ if need_unzip and isinstance(__loader__, zipimport.zipimporter):
     # do not import these modules unless we have to
     import atexit
     import shutil
+    import signal
     import tempfile
     import types
     import zipfile
@@ -499,7 +500,13 @@ if need_unzip and isinstance(__loader__, zipimport.zipimporter):
     # can't use a finally handler: it gets invoked BEFORE tracebacks are printed
     tempdir = tempfile.mkdtemp('_pyzip')
     tempdir_create_pid = os.getpid()
-    atexit.register(shutil.rmtree, tempdir)
+    old_handler = None
+    def cleanup_and_exit(*args):
+        clean_tempdir_parent_only(tempdir)
+        if old_handler:
+            old_handler(*args)
+    atexit.register(clean_and_exit, tempdir)
+    old_signal = signal.signal(signal.SIGTERM, cleanup_and_exit)
     sys.path.insert(0, tempdir)
 
     package_zip = PreservePermissionsZipFile(__loader__.archive)
