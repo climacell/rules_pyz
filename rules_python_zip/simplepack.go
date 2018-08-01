@@ -505,7 +505,7 @@ if need_unzip and isinstance(__loader__, zipimport.zipimporter):
         clean_tempdir_parent_only(tempdir)
         if old_handler:
             old_handler(*args)
-    atexit.register(clean_and_exit, tempdir)
+    atexit.register(cleanup_and_exit, tempdir)
     old_signal = signal.signal(signal.SIGTERM, cleanup_and_exit)
     sys.path.insert(0, tempdir)
 
