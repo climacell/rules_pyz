@@ -499,7 +499,7 @@ if need_unzip and isinstance(__loader__, zipimport.zipimporter):
     # can't use a finally handler: it gets invoked BEFORE tracebacks are printed
     tempdir = tempfile.mkdtemp('_pyzip')
     tempdir_create_pid = os.getpid()
-    atexit.register(clean_tempdir_parent_only, tempdir)
+    atexit.register(shutil.rmtree, tempdir)
     sys.path.insert(0, tempdir)
 
     package_zip = PreservePermissionsZipFile(__loader__.archive)
