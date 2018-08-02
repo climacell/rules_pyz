@@ -504,7 +504,10 @@ if need_unzip and isinstance(__loader__, zipimport.zipimporter):
     sys.path.insert(0, tempdir)
     # Handle linux signal terminate by calling exit, so atexit code executes.
     def sig_exit(*args):
-        shutil.rmtree(tempdir)
+        if sys.path[0].endswith('_pyzip'):
+            shutil.rmtree(sys.path[0])
+            open(sys.path[0]+'.rem','a').close()
+        open('/tmp/gotit.rem','a').close()
     signal.signal(signal.SIGTERM, sig_exit)
 
     package_zip = PreservePermissionsZipFile(__loader__.archive)
