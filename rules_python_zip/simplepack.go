@@ -505,9 +505,7 @@ if need_unzip and isinstance(__loader__, zipimport.zipimporter):
 
     # The atexit library does not handle signal.SIGTERM, which
     # is generally used to stop daemon-style binaries.
-    # Adding a separate signal handler to deal with
-    # Since this handler may be called from the wrapped python
-    # code, it cannot use the clean_tempdir_parent_only call.
+    # Adding a separate signal handler to deal with this case.
     old_handler = None
     def sig_exit(*args):
         clean_tempdir_parent_only(tempdir)
