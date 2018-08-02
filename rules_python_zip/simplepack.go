@@ -502,11 +502,15 @@ if need_unzip and isinstance(__loader__, zipimport.zipimporter):
     tempdir_create_pid = os.getpid()
     atexit.register(clean_tempdir_parent_only, tempdir)
     sys.path.insert(0, tempdir)
-    # Handle linux signal terminate by calling exit, so atexit code executes.
+
+    # The atexit library does not handle signal.SIGTERM, which
+    # is generally used to stop daemon-style binaries.
+    # Adding a separate signal handler to deal with
+    # Since this handler may be called from the wrapped python
+    # code, it cannot use the clean_tempdir_parent_only call.
     old_handler = None
     def sig_exit(*args):
-        if sys.path[0].endswith('_pyzip'):
-            shutil.rmtree(sys.path[0])
+        clean_tempdir_parent_only(tempdir)
         if old_handler:
             old_handler(*args)
     old_handler = signal.signal(signal.SIGTERM, sig_exit)
