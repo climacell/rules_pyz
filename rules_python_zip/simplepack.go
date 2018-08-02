@@ -510,9 +510,7 @@ if need_unzip and isinstance(__loader__, zipimport.zipimporter):
     # code, it cannot use the clean_tempdir_parent_only call.
     old_handler = None
     def sig_exit(*args):
-        shutil.rmtree(tempdir)
-        if os.getpid() == tempdir_create_pid:
-            open(tempdir+'.rem','a').close()
+        clean_tempdir_parent_only(tempdir)
         if old_handler:
             old_handler(*args)
     old_handler = signal.signal(signal.SIGTERM, sig_exit)
