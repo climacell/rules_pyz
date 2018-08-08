@@ -479,6 +479,7 @@ if need_unzip and isinstance(__loader__, zipimport.zipimporter):
     # do not import these modules unless we have to
     import atexit
     import shutil
+    import signal
     import tempfile
     import types
     import zipfile
@@ -501,6 +502,16 @@ if need_unzip and isinstance(__loader__, zipimport.zipimporter):
     tempdir_create_pid = os.getpid()
     atexit.register(clean_tempdir_parent_only, tempdir)
     sys.path.insert(0, tempdir)
+
+    # The atexit library does not handle signal.SIGTERM, which
+    # is generally used to stop daemon-style binaries.
+    # Adding a separate signal handler to deal with this case.
+    old_handler = None
+    def sig_exit(*args):
+        clean_tempdir_parent_only(tempdir)
+        if old_handler:
+            old_handler(*args)
+    old_handler = signal.signal(signal.SIGTERM, sig_exit)
 
     package_zip = PreservePermissionsZipFile(__loader__.archive)
     files_to_unzip = package_info['unzip_paths']
