@@ -585,6 +585,7 @@ func main() {
 			wheels = append(wheels, wheelInfo{partialInfo.url, shaSum, deps, extras, partialInfo.useLocalWheel, partialInfo.filePath})
 		}
 
+		sort.Sort(wheelsByPlatform(wheels))
 		dependencies = append(dependencies, pyPIDependency{packageName, wheels})
 		installedPackages[normalizePackageName(packageName)] = true
 	}

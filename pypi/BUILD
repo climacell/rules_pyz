@@ -1,4 +1,5 @@
-load("//rules_python_zip:rules_python_zip.bzl", "pyz_binary", "pyz_library", "pyz_test")
+load("@com_bluecore_rules_pyz//rules_python_zip:rules_python_zip.bzl",
+    "pyz_binary", "pyz_library", "pyz_test")
 
 pyz_binary(
     name = "pip",
@@ -11,10 +12,10 @@ pyz_binary(
 )
 
 pyz_binary(
-    name = "wheeltool",
-    srcs = ["wheeltool.py"],
-    visibility = ["//visibility:public"],
-    deps = ["//rules_python_zip:setuptools"],
+    name="wheeltool",
+    deps=[":wheeltool_lib",],
+    entry_point="wheeltool",
+    visibility=["//visibility:public"],
 )
 
 pyz_library(
@@ -37,6 +38,17 @@ pyz_test(
     data = ["testdata/attrs-18.1.0-py2.py3-none-any.whl"],
     deps = [":wheeltool_lib"],
 )
+pyz_library(
+    name="wheeltool_lib",
+    srcs=["wheeltool.py"],
+    pythonroot=".",
+    deps=["@pypi_setuptools//:lib"],
+)
+pyz_test(
+    name="test_wheeltool",
+    srcs=["test_wheeltool.py"],
+    deps=[":wheeltool_lib"],
+)
 
 pyz_library(
     name = "pip_lib",
@@ -50,7 +62,11 @@ pyz_library(
     #     "pip/_vendor/requests/cacerts.pem",
     #     "pip/_vendor/requests/certs.py",
     # ],
-    deps = ["//rules_python_zip:setuptools"],
+    deps=[
+        "@pypi_pip//:lib",
+        "@pypi_setuptools//:lib",
+        "@pypi_wheel//:lib",
+    ],
 )
 
 py_binary(

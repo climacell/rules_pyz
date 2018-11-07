@@ -21,10 +21,81 @@ import collections
 import json
 import os
 import re
+import rfc822
 import sys
 import zipfile
 
 import pkg_resources
+from pkg_resources._vendor.packaging import markers
+
+
+def recurse_split_extra(parsed_parts):
+  extra = ''
+  remaining = []
+
+  i = 0
+  for part in parsed_parts:
+    if isinstance(part, list):
+      # parenthesized expressions are lists
+      sub_extra, sub_remaining = recurse_split_extra(part)
+      if sub_extra != '':
+        assert extra == ''
+        extra = sub_extra
+      remaining.append(sub_remaining)
+    elif isinstance(part, tuple):
+      if isinstance(part[0], markers.Variable) and part[0].value == 'extra':
+        # Found the extra part: parse it and skip it
+        op = part[1]
+        value = part[2]
+        assert isinstance(op, markers.Op) and op.value == '=='
+        assert isinstance(value, markers.Value)
+        assert len(value.value) > 0
+        assert extra == ''
+        extra = value.value
+
+        # if the previous item is now a dangling boolean operator: trim it
+        if len(remaining) > 0 and isinstance(remaining[-1], basestring):
+          remaining = remaining[:-1]
+      else:
+        remaining.append(part)
+    elif isinstance(part, basestring):
+      # must be an operator: just append it
+      remaining.append(part)
+    else:
+      raise Exception('unhandled part: ' + repr(part))
+
+  # if the first item is a dangling boolean operator: trim it
+  if len(remaining) > 0 and isinstance(remaining[0], basestring):
+    remaining = remaining[1:]
+  return extra, remaining
+
+def recurse_str(parsed_parts):
+  out = ''
+  for part in parsed_parts:
+    if isinstance(part, list):
+      out += '(' + recurse_str(part) + ')'
+    elif isinstance(part, tuple):
+      out += ' '.join(p.serialize() for p in part)
+    elif isinstance(part, basestring):
+      out += ' ' + part + ' '
+    else:
+      raise Exception('unhandled part: ' + repr(part))
+  return out
+
+
+def split_extra_from_environment_marker(environment_marker):
+  '''
+  Splits an environment marker into (extra, remaining environment). It parses the expression,
+  then finds the "extra==X" clause. That clause is removed, and the expression is serialized.
+  '''
+
+  marker = markers.Marker(environment_marker)
+  extra, remaining = recurse_split_extra(marker._markers)
+
+  # rebuild the string
+  environment_string = recurse_str(remaining)
+
+  return extra, environment_string
 
 
 class Wheel(object):
@@ -180,4 +251,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+  main()
