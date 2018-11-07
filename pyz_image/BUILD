@@ -1,5 +1,5 @@
-load("@com_bluecore_rules_pyz//rules_python_zip:rules_python_zip.bzl", "pyz_binary", "pyz_test")
-load("@com_bluecore_rules_pyz//pyz_image:pyz_image.bzl", "pyz2_image", "pyz3_image")
+load("@rules_pyz//rules_python_zip:rules_python_zip.bzl", "pyz_binary", "pyz_test")
+load("@rules_pyz//pyz_image:pyz_image.bzl", "pyz2_image", "pyz3_image")
 load("@io_bazel_rules_docker//container:container.bzl", "container_image", "container_layer")
 
 exports_files(["zip_to_tar.py", "ld.so.cache"])

@@ -1,8 +1,8 @@
 load("@io_bazel_rules_docker//container:container.bzl", "container_image")
 
-ZIP_TO_TAR_LABEL = "@com_bluecore_rules_pyz//pyz_image:zip_to_tar.py"
-BASE_PY2_CONTAINER_IMAGE = "@com_bluecore_rules_pyz//pyz_image:py2_image_base"
-BASE_PY3_CONTAINER_IMAGE = "@com_bluecore_rules_pyz//pyz_image:py3_image_base"
+ZIP_TO_TAR_LABEL = "@rules_pyz//pyz_image:zip_to_tar.py"
+BASE_PY2_CONTAINER_IMAGE = "@rules_pyz//pyz_image:py2_image_base"
+BASE_PY3_CONTAINER_IMAGE = "@rules_pyz//pyz_image:py3_image_base"
 
 def pyz2_image(name, binary, base=BASE_PY2_CONTAINER_IMAGE, entrypoint=None, **kwargs):
     binary_exezip = binary + "_exezip"

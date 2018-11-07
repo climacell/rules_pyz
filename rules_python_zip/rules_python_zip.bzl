@@ -396,7 +396,7 @@ def pyz_test(name, srcs=[], data=[], deps=[], pythonroot=None,
 
 def wheel_build_content():
     # Label ensures this is resolved correctly when used as an external workspace
-    rules_label = Label("@com_bluecore_rules_pyz//rules_python_zip:rules_python_zip.bzl")
+    rules_label = Label("@rules_pyz//rules_python_zip:rules_python_zip.bzl")
     content = '''
 load("{}", "pyz_library")
 

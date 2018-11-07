@@ -2,13 +2,13 @@
 #
 # Command line:
 #   pypi/pip_generate \
-#     --wheelToolPath=/Users/evanjones/rules_pyz/bazel-bin/pypi/pip_generate_wrapper.runfiles/com_bluecore_rules_pyz/pypi/wheeltool -requirements=requirements.txt -outputDir=third_party/pypi -outputBzlFileName=new.bzl -wheelDir=whl --wheelURLPrefix=https://storage.googleapis.com/bluecore-bazel/
+#     --wheelToolPath=/Users/evanjones/rules_pyz/bazel-bin/pypi/pip_generate_wrapper.runfiles/rules_pyz/pypi/wheeltool -requirements=requirements.txt -outputDir=third_party/pypi -outputBzlFileName=new.bzl -wheelDir=whl --wheelURLPrefix=https://storage.googleapis.com/bluecore-bazel/
 
-load("@com_bluecore_rules_pyz//rules_python_zip:rules_python_zip.bzl", "pyz_library")
+load("@rules_pyz//rules_python_zip:rules_python_zip.bzl", "pyz_library")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 _BUILD_FILE_CONTENT='''
-load("@com_bluecore_rules_pyz//rules_python_zip:rules_python_zip.bzl", "pyz_library")
+load("@rules_pyz//rules_python_zip:rules_python_zip.bzl", "pyz_library")
 
 pyz_library(
     name="lib",
@@ -33,8 +33,8 @@ def pypi_libraries():
             "cffi",
             "six",
         ] + select({
-            "@com_bluecore_rules_pyz//rules_python_zip:linux": ["@pypi_bcrypt__linux//:lib"],
-            "@com_bluecore_rules_pyz//rules_python_zip:osx": ["@pypi_bcrypt__osx//:lib"],
+            "@rules_pyz//rules_python_zip:linux": ["@pypi_bcrypt__linux//:lib"],
+            "@rules_pyz//rules_python_zip:osx": ["@pypi_bcrypt__osx//:lib"],
         }),
         licenses=["notice"],
         visibility=["//visibility:public"],
@@ -59,8 +59,8 @@ def pypi_libraries():
         deps=[
             "pycparser",
         ] + select({
-            "@com_bluecore_rules_pyz//rules_python_zip:linux": ["@pypi_cffi__linux//:lib"],
-            "@com_bluecore_rules_pyz//rules_python_zip:osx": ["@pypi_cffi__osx//:lib"],
+            "@rules_pyz//rules_python_zip:linux": ["@pypi_cffi__linux//:lib"],
+            "@rules_pyz//rules_python_zip:osx": ["@pypi_cffi__osx//:lib"],
         }),
         licenses=["notice"],
         visibility=["//visibility:public"],
@@ -82,8 +82,8 @@ def pypi_libraries():
             "ipaddress",
             "six",
         ] + select({
-            "@com_bluecore_rules_pyz//rules_python_zip:linux": ["@pypi_cryptography__linux//:lib"],
-            "@com_bluecore_rules_pyz//rules_python_zip:osx": ["@pypi_cryptography__osx//:lib"],
+            "@rules_pyz//rules_python_zip:linux": ["@pypi_cryptography__linux//:lib"],
+            "@rules_pyz//rules_python_zip:osx": ["@pypi_cryptography__osx//:lib"],
         }),
         licenses=["notice"],
         visibility=["//visibility:public"],
@@ -187,8 +187,8 @@ def pypi_libraries():
             "futures",
             "six",
         ] + select({
-            "@com_bluecore_rules_pyz//rules_python_zip:linux": ["@pypi_grpcio__linux//:lib"],
-            "@com_bluecore_rules_pyz//rules_python_zip:osx": ["@pypi_grpcio__osx//:lib"],
+            "@rules_pyz//rules_python_zip:linux": ["@pypi_grpcio__linux//:lib"],
+            "@rules_pyz//rules_python_zip:osx": ["@pypi_grpcio__osx//:lib"],
         }),
         licenses=["notice"],
         visibility=["//visibility:public"],
@@ -211,8 +211,8 @@ def pypi_libraries():
         name="numpy",
         deps=[
         ] + select({
-            "@com_bluecore_rules_pyz//rules_python_zip:linux": ["@pypi_numpy__linux//:lib"],
-            "@com_bluecore_rules_pyz//rules_python_zip:osx": ["@pypi_numpy__osx//:lib"],
+            "@rules_pyz//rules_python_zip:linux": ["@pypi_numpy__linux//:lib"],
+            "@rules_pyz//rules_python_zip:osx": ["@pypi_numpy__osx//:lib"],
         }),
         licenses=["notice"],
         visibility=["//visibility:public"],
@@ -223,8 +223,8 @@ def pypi_libraries():
             "setuptools",
             "six",
         ] + select({
-            "@com_bluecore_rules_pyz//rules_python_zip:linux": ["@pypi_protobuf__linux//:lib"],
-            "@com_bluecore_rules_pyz//rules_python_zip:osx": ["@pypi_protobuf__osx//:lib"],
+            "@rules_pyz//rules_python_zip:linux": ["@pypi_protobuf__linux//:lib"],
+            "@rules_pyz//rules_python_zip:osx": ["@pypi_protobuf__osx//:lib"],
         }),
         licenses=["notice"],
         visibility=["//visibility:public"],
@@ -282,8 +282,8 @@ def pypi_libraries():
         deps=[
             "numpy",
         ] + select({
-            "@com_bluecore_rules_pyz//rules_python_zip:linux": ["@pypi_scipy__linux//:lib"],
-            "@com_bluecore_rules_pyz//rules_python_zip:osx": ["@pypi_scipy__osx//:lib"],
+            "@rules_pyz//rules_python_zip:linux": ["@pypi_scipy__linux//:lib"],
+            "@rules_pyz//rules_python_zip:osx": ["@pypi_scipy__osx//:lib"],
         }),
         licenses=["notice"],
         visibility=["//visibility:public"],

@@ -1,4 +1,4 @@
-load("@com_bluecore_rules_pyz//rules_python_zip:rules_python_zip.bzl", "pyz_library")
+load("@rules_pyz//rules_python_zip:rules_python_zip.bzl", "pyz_library")
 
 # Must be defined a separate BUILD file from rules_python_zip.bzl:
 # If the definitions for @pypi_* don't exist yet, it fails when parsing

@@ -14,12 +14,12 @@ Add the following lines to your `WORKSPACE`:
 ```python
 # Load the dependencies required for the rules
 git_repository(
-    name = "com_bluecore_rules_pyz",
+    name = "rules_pyz",
     commit = "eb2527d42664bc2dc4834ee54cb1bb94a1d08216",
     remote = "https://github.com/TriggerMail/rules_pyz.git",
 )
 
-load("@com_bluecore_rules_pyz//rules_python_zip:rules_python_zip.bzl", "pyz_repositories")
+load("@rules_pyz//rules_python_zip:rules_python_zip.bzl", "pyz_repositories")
 
 pyz_repositories()
 ```
@@ -28,7 +28,7 @@ To each BUILD file where you want to use the rules, add:
 
 ```python
 load(
-    "@com_bluecore_rules_pyz//rules_python_zip:rules_python_zip.bzl",
+    "@rules_pyz//rules_python_zip:rules_python_zip.bzl",
     "pyz_binary",
     "pyz_library",
     "pyz_test",
@@ -51,13 +51,13 @@ If you want to import packages from PyPI, write a pip `requirements.txt` file, t
     ```
 4. Add the following lines to `WORKSPACE`:
     ```python
-    load("@com_bluecore_rules_pyz//pypi:pip.bzl", "pip_repositories")
+    load("@rules_pyz//pypi:pip.bzl", "pip_repositories")
     pip_repositories()
     ```
 5. Generate the dependencies using the tool:
     ```bash
-    bazel build @com_bluecore_rules_pyz//pypi:pip_generate_wrapper
-    bazel-bin/external/com_bluecore_rules_pyz/pypi/pip_generate_wrapper \
+    bazel build @rules_pyz//pypi:pip_generate_wrapper
+    bazel-bin/external/rules_pyz/pypi/pip_generate_wrapper \
         -requirements requirements.txt \
         -outputDir third_party/pypi \
         -wheelURLPrefix http://example.com/ \

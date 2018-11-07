@@ -21,7 +21,7 @@ def main():
 
         container_path = container_image_path
         if guess_runfiles != '':
-            container_path = guess_runfiles + '/com_bluecore_rules_pyz/' + container_path
+            container_path = guess_runfiles + '/rules_pyz/' + container_path
 
         print('loading image {} ...'.format(container_path))
         sys.stdout.flush()
