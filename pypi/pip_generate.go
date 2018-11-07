@@ -47,18 +47,23 @@ var unzipPackages = map[string]bool{
 	"certifi": true, // returns paths to the contained .pem files
 }
 
-type ruleTypeGenerator struct {
+type targetTypeGenerator struct {
 	libraryRule    string
 	wheelAttribute string
-	rulePath       string
+	bzlPath        string
 }
 
-var pyzLibraryGenerator = ruleTypeGenerator{"pyz_library", "wheels",
+var pyzLibraryGenerator = targetTypeGenerator{"pyz_library", "wheels",
 	"//rules_python_zip:rules_python_zip.bzl"}
-var pexLibraryGenerator = ruleTypeGenerator{"pex_library", "eggs",
+var pexLibraryGenerator = targetTypeGenerator{"pex_library", "eggs",
 	"//bazel_rules_pex/pex:pex_rules.bzl"}
 
-func (rg *ruleTypeGenerator) printLibRule(dependency *pyPIDependency, ruleGenerator *ruleTypeGenerator, workspacePrefix *string, rulesWorkspace *string, installedPackages *map[string]bool) string {
+// Create a library target.
+func (ruleGenerator *targetTypeGenerator) printLibTarget(
+	dependency *pyPIDependency,
+	workspacePrefix *string,
+	rulesWorkspace *string,
+	installedPackages *map[string]bool) string {
 	output := ""
 
 	output += fmt.Sprintf("    %s(\n", ruleGenerator.libraryRule)
@@ -400,7 +405,7 @@ func main() {
 		}
 	}
 
-	rulesPath := *rulesWorkspace + ruleGenerator.rulePath
+	rulesBzlPath := *rulesWorkspace + ruleGenerator.bzlPath
 
 	output := path.Join(*outputDir, *outputBzlFileName)
 	outputBzlFile, err := os.OpenFile(output, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
@@ -585,12 +590,12 @@ func main() {
 	}
 
 	commandLineArguments := strings.Join(os.Args[1:], " ")
-	fmt.Fprintf(outputBzlFile, pypiRulesHeader, commandLineArguments, rulesPath, ruleGenerator.libraryRule)
+	fmt.Fprintf(outputBzlFile, pypiRulesHeader, commandLineArguments, rulesBzlPath, ruleGenerator.libraryRule)
 
 	// First, make the actual library targets.
 	fmt.Fprintf(outputBzlFile, "\ndef pypi_libraries():\n")
 	for _, dependency := range dependencies {
-		ruleText := ruleGenerator.printLibRule(&dependency, &ruleGenerator, workspacePrefix, rulesWorkspace, &installedPackages)
+		ruleText := ruleGenerator.printLibTarget(&dependency, workspacePrefix, rulesWorkspace, &installedPackages)
 		fmt.Fprintf(outputBzlFile, ruleText)
 	}
 
