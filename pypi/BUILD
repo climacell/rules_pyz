@@ -17,26 +17,12 @@ pyz_binary(
     entry_point="wheeltool",
     visibility=["//visibility:public"],
 )
-
-pyz_library(
-    name = "wheeltool_lib",
-    srcs = ["wheeltool.py"],
-    deps = ["//rules_python_zip:setuptools"],
-)
-
 # checks imports: needs pkg_resources which is not in the standard library
 sh_test(
-    name = "wheeltool_test",
-    srcs = ["wheeltool_test.sh"],
-    args = ["$(location :wheeltool)"],
-    data = [":wheeltool"],
-)
-
-pyz_test(
-    name = "wheeltool_test_py",
-    srcs = ["wheeltool_test.py"],
-    data = ["testdata/attrs-18.1.0-py2.py3-none-any.whl"],
-    deps = [":wheeltool_lib"],
+    name="wheeltool_test",
+    srcs=["wheeltool_test.sh"],
+    data=[":wheeltool"],
+    args=["$(location :wheeltool)"],
 )
 pyz_library(
     name="wheeltool_lib",
