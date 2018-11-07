@@ -59,20 +59,20 @@ var pexLibraryGenerator = targetTypeGenerator{"pex_library", "eggs",
 	"//bazel_rules_pex/pex:pex_rules.bzl"}
 
 // Create a library target.
-func (ruleGenerator *targetTypeGenerator) printLibTarget(
+func (targetGenerator *targetTypeGenerator) printLibTarget(
 	dependency *pyPIDependency,
 	workspacePrefix *string,
 	rulesWorkspace *string,
 	installedPackages *map[string]bool) string {
 	output := ""
 
-	output += fmt.Sprintf("    %s(\n", ruleGenerator.libraryRule)
+	output += fmt.Sprintf("    %s(\n", targetGenerator.libraryRule)
 	output += fmt.Sprintf("        name=\"%s\",\n", dependency.bazelLibraryName())
 	if len(dependency.wheels) == 1 {
 		output += fmt.Sprintf("        %s=[\"%s\"],\n",
-			ruleGenerator.wheelAttribute, dependency.wheels[0].bazelTarget(workspacePrefix))
+			targetGenerator.wheelAttribute, dependency.wheels[0].bazelTarget(workspacePrefix))
 	} else {
-		output += fmt.Sprintf("        %s=select({\n", ruleGenerator.wheelAttribute)
+		output += fmt.Sprintf("        %s=select({\n", targetGenerator.wheelAttribute)
 		for _, wheelInfo := range dependency.wheels {
 			selectPlatform := bazelPlatform(wheelInfo.fileName())
 			if selectPlatform == "" {
@@ -127,7 +127,7 @@ func (ruleGenerator *targetTypeGenerator) printLibTarget(
 		allDeps = append(allDeps, dependency.bazelLibraryName())
 		sort.Strings(allDeps)
 
-		output += fmt.Sprintf("    %s(\n", ruleGenerator.libraryRule)
+		output += fmt.Sprintf("    %s(\n", targetGenerator.libraryRule)
 		output += fmt.Sprintf("        name=\"%s__%s\",\n", dependency.bazelLibraryName(), extraName)
 		output += fmt.Sprintf("        deps=[\n")
 		for _, dep := range allDeps {
@@ -386,9 +386,9 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Error: -ruleType must be pyz or pex")
 		os.Exit(1)
 	}
-	ruleGenerator := pyzLibraryGenerator
+	targetGenerator := pyzLibraryGenerator
 	if *ruleType == "pex" {
-		ruleGenerator = pexLibraryGenerator
+		targetGenerator = pexLibraryGenerator
 	}
 
 	fullWheelDir := path.Join(*outputDir, *wheelDir)
@@ -405,7 +405,7 @@ func main() {
 		}
 	}
 
-	rulesBzlPath := *rulesWorkspace + ruleGenerator.bzlPath
+	rulesBzlPath := *rulesWorkspace + targetGenerator.bzlPath
 
 	output := path.Join(*outputDir, *outputBzlFileName)
 	outputBzlFile, err := os.OpenFile(output, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
@@ -590,12 +590,12 @@ func main() {
 	}
 
 	commandLineArguments := strings.Join(os.Args[1:], " ")
-	fmt.Fprintf(outputBzlFile, pypiRulesHeader, commandLineArguments, rulesBzlPath, ruleGenerator.libraryRule)
+	fmt.Fprintf(outputBzlFile, pypiRulesHeader, commandLineArguments, rulesBzlPath, targetGenerator.libraryRule)
 
 	// First, make the actual library targets.
 	fmt.Fprintf(outputBzlFile, "\ndef pypi_libraries():\n")
 	for _, dependency := range dependencies {
-		ruleText := ruleGenerator.printLibTarget(&dependency, workspacePrefix, rulesWorkspace, &installedPackages)
+		ruleText := targetGenerator.printLibTarget(&dependency, workspacePrefix, rulesWorkspace, &installedPackages)
 		fmt.Fprintf(outputBzlFile, ruleText)
 	}
 
