@@ -47,16 +47,100 @@ var unzipPackages = map[string]bool{
 	"certifi": true, // returns paths to the contained .pem files
 }
 
-type ruleTypeGenerator struct {
+type targetTypeGenerator struct {
 	libraryRule    string
 	wheelAttribute string
-	rulePath       string
+	bzlPath        string
 }
 
-var pyzLibraryGenerator = ruleTypeGenerator{"pyz_library", "wheels",
+var pyzLibraryGenerator = targetTypeGenerator{"pyz_library", "wheels",
 	"//rules_python_zip:rules_python_zip.bzl"}
-var pexLibraryGenerator = ruleTypeGenerator{"pex_library", "eggs",
+var pexLibraryGenerator = targetTypeGenerator{"pex_library", "eggs",
 	"//bazel_rules_pex/pex:pex_rules.bzl"}
+
+// Create a library target.
+func (targetGenerator *targetTypeGenerator) printLibTarget(
+	dependency *pyPIDependency,
+	workspacePrefix *string,
+	rulesWorkspace *string,
+	installedPackages *map[string]bool) string {
+	output := ""
+
+	output += fmt.Sprintf("    %s(\n", targetGenerator.libraryRule)
+	output += fmt.Sprintf("        name=\"%s\",\n", dependency.bazelLibraryName())
+	if len(dependency.wheels) == 1 {
+		output += fmt.Sprintf("        %s=[\"%s\"],\n",
+			targetGenerator.wheelAttribute, dependency.wheels[0].bazelTarget(workspacePrefix))
+	} else {
+		output += fmt.Sprintf("        %s=select({\n", targetGenerator.wheelAttribute)
+		for _, wheelInfo := range dependency.wheels {
+			selectPlatform := bazelPlatform(wheelInfo.fileName())
+			if selectPlatform == "" {
+				selectPlatform = "//conditions:default"
+			} else {
+				selectPlatform = *rulesWorkspace + "//rules_python_zip:" + selectPlatform
+			}
+			output += fmt.Sprintf("                \"%s\": [\"%s\"],\n",
+				selectPlatform, wheelInfo.bazelTarget(workspacePrefix))
+		}
+		output += fmt.Sprintf("        }),\n")
+	}
+
+	if unzipPackages[dependency.name] {
+		output += fmt.Sprintf("        zip_safe=False,\n")
+	}
+
+	output += fmt.Sprintf("        deps=[\n")
+	for _, dep := range dependency.wheels[0].deps {
+		output += fmt.Sprintf("            \":%s\",\n", pyPIToBazelPackageName(dep))
+	}
+	output += fmt.Sprintf("        ],\n")
+	// Fixes build error TODO: different type? comment that this is not the right license?
+	output += fmt.Sprintf("        licenses=[\"notice\"],\n")
+	output += fmt.Sprintf("        visibility=[\"//visibility:public\"],\n")
+	output += fmt.Sprintf("    )\n")
+
+	// ensure output is reproducible: output extras in the same order
+	extraNames := []string{}
+	for extraName := range dependency.wheels[0].extras {
+		extraNames = append(extraNames, extraName)
+	}
+	sort.Strings(extraNames)
+	// TODO: Refactor common code out of this and the above?
+	for _, extraName := range extraNames {
+		extraDeps := dependency.wheels[0].extras[extraName]
+		sort.Strings(extraDeps)
+		// only include the extra if we have all the referenced packages
+		hasAllPackages := true
+		for _, dep := range extraDeps {
+			if !(*installedPackages)[dependencyNormalizedPackageName(dep)] {
+				hasAllPackages = false
+				break
+			}
+		}
+		if !hasAllPackages {
+			continue
+		}
+
+		// Sort dependencies.
+		allDeps := append([]string(nil), extraDeps...)
+		allDeps = append(allDeps, dependency.bazelLibraryName())
+		sort.Strings(allDeps)
+
+		output += fmt.Sprintf("    %s(\n", targetGenerator.libraryRule)
+		output += fmt.Sprintf("        name=\"%s__%s\",\n", dependency.bazelLibraryName(), extraName)
+		output += fmt.Sprintf("        deps=[\n")
+		for _, dep := range allDeps {
+			output += fmt.Sprintf("            \":%s\",\n", pyPIToBazelPackageName(dep))
+		}
+		output += fmt.Sprintf("        ],\n")
+		// output += fmt.Sprintf("        # Not the correct license but fixes a build error\n")
+		output += fmt.Sprintf("        licenses=[\"notice\"],\n")
+		output += fmt.Sprintf("        visibility=[\"//visibility:public\"],\n")
+		output += fmt.Sprintf("    )\n")
+	}
+	return output
+}
 
 type wheelInfo struct {
 	url           string
@@ -217,6 +301,10 @@ func wheelDependencies(pythonPath string, wheelToolPath string, path string, ver
 		fmt.Printf("Failed to parse wheeltool for wheel %s, output:\n%s", path, output)
 		return nil, nil, err
 	}
+	sort.Strings(output.Requires)
+	for _, extraDeps := range output.Extras {
+		sort.Strings(extraDeps)
+	}
 	return output.Requires, output.Extras, nil
 }
 
@@ -298,9 +386,9 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Error: -ruleType must be pyz or pex")
 		os.Exit(1)
 	}
-	ruleGenerator := pyzLibraryGenerator
+	targetGenerator := pyzLibraryGenerator
 	if *ruleType == "pex" {
-		ruleGenerator = pexLibraryGenerator
+		targetGenerator = pexLibraryGenerator
 	}
 
 	fullWheelDir := path.Join(*outputDir, *wheelDir)
@@ -317,7 +405,7 @@ func main() {
 		}
 	}
 
-	rulesPath := *rulesWorkspace + ruleGenerator.rulePath
+	rulesBzlPath := *rulesWorkspace + targetGenerator.bzlPath
 
 	output := path.Join(*outputDir, *outputBzlFileName)
 	outputBzlFile, err := os.OpenFile(output, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
@@ -502,79 +590,13 @@ func main() {
 	}
 
 	commandLineArguments := strings.Join(os.Args[1:], " ")
-	fmt.Fprintf(outputBzlFile, pypiRulesHeader, commandLineArguments, rulesPath, ruleGenerator.libraryRule)
+	fmt.Fprintf(outputBzlFile, pypiRulesHeader, commandLineArguments, rulesBzlPath, targetGenerator.libraryRule)
 
-	fmt.Fprintf(outputBzlFile, "\ndef pypi_libraries():\n")
 	// First, make the actual library targets.
+	fmt.Fprintf(outputBzlFile, "\ndef pypi_libraries():\n")
 	for _, dependency := range dependencies {
-		fmt.Fprintf(outputBzlFile, "    %s(\n", ruleGenerator.libraryRule)
-		fmt.Fprintf(outputBzlFile, "        name=\"%s\",\n", dependency.bazelLibraryName())
-		if len(dependency.wheels) == 1 {
-			fmt.Fprintf(outputBzlFile, "        %s=[\"%s\"],\n",
-				ruleGenerator.wheelAttribute, dependency.wheels[0].bazelTarget(workspacePrefix))
-		} else {
-			fmt.Fprintf(outputBzlFile, "        %s=select({\n", ruleGenerator.wheelAttribute)
-			for _, wheelInfo := range dependency.wheels {
-				selectPlatform := bazelPlatform(wheelInfo.fileName())
-				if selectPlatform == "" {
-					selectPlatform = "//conditions:default"
-				} else {
-					selectPlatform = *rulesWorkspace + "//rules_python_zip:" + selectPlatform
-				}
-				fmt.Fprintf(outputBzlFile, "                \"%s\": [\"%s\"],\n",
-					selectPlatform, wheelInfo.bazelTarget(workspacePrefix))
-			}
-			fmt.Fprintf(outputBzlFile, "        }),\n")
-		}
-
-		if unzipPackages[dependency.name] {
-			fmt.Fprintf(outputBzlFile, "        zip_safe=False,\n")
-		}
-
-		fmt.Fprintf(outputBzlFile, "        deps=[\n")
-		for _, dep := range dependency.wheels[0].deps {
-			fmt.Fprintf(outputBzlFile, "            \"%s\",\n", pyPIToBazelPackageName(dep))
-		}
-		fmt.Fprintf(outputBzlFile, "        ],\n")
-		// Fixes build error TODO: different type? comment that this is not the right license?
-		fmt.Fprintf(outputBzlFile, "        licenses=[\"notice\"],\n")
-		fmt.Fprintf(outputBzlFile, "        visibility=[\"//visibility:public\"],\n")
-		fmt.Fprintf(outputBzlFile, "    )\n")
-
-		// ensure output is reproducible: output extras in the same order
-		extraNames := []string{}
-		for extraName := range dependency.wheels[0].extras {
-			extraNames = append(extraNames, extraName)
-		}
-		sort.Strings(extraNames)
-		// TODO: Refactor common code out of this and the above?
-		for _, extraName := range extraNames {
-			extraDeps := dependency.wheels[0].extras[extraName]
-			// only include the extra if we have all the referenced packages
-			hasAllPackages := true
-			for _, dep := range extraDeps {
-				if !installedPackages[dependencyNormalizedPackageName(dep)] {
-					hasAllPackages = false
-					break
-				}
-			}
-			if !hasAllPackages {
-				continue
-			}
-
-			fmt.Fprintf(outputBzlFile, "    %s(\n", ruleGenerator.libraryRule)
-			fmt.Fprintf(outputBzlFile, "        name=\"%s__%s\",\n", dependency.bazelLibraryName(), extraName)
-			fmt.Fprintf(outputBzlFile, "        deps=[\n")
-			fmt.Fprintf(outputBzlFile, "            \":%s\",\n", dependency.bazelLibraryName())
-			for _, dep := range extraDeps {
-				fmt.Fprintf(outputBzlFile, "            \"%s\",\n", pyPIToBazelPackageName(dep))
-			}
-			fmt.Fprintf(outputBzlFile, "        ],\n")
-			// fmt.Fprintf(outputBzlFile, "        # Not the correct license but fixes a build error\n")
-			fmt.Fprintf(outputBzlFile, "        licenses=[\"notice\"],\n")
-			fmt.Fprintf(outputBzlFile, "        visibility=[\"//visibility:public\"],\n")
-			fmt.Fprintf(outputBzlFile, "    )\n")
-		}
+		ruleText := targetGenerator.printLibTarget(&dependency, workspacePrefix, rulesWorkspace, &installedPackages)
+		fmt.Fprintf(outputBzlFile, ruleText)
 	}
 
 	// Next, make `filegroup` targets for any wheels that we stored locally.
