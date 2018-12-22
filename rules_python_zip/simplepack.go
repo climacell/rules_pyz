@@ -377,8 +377,56 @@ import json
 import os
 import sys
 import zipimport
+import tempfile
+import weakref
+import warnings
+import shutil
 
 _PY3 = sys.version_info >= (3, 0)
+
+
+class NamedTemporaryDirectory():
+    """
+    Arguments are the same as tempfile.mkdtemp, except for the
+    addition of `delete`. When delete=False, we won't delete the named
+    temp dir when finished; this is intended to ease debugging.
+    An overridden version of TemporaryDirectory exists for PY3 below.
+    Only use this for py2 applications
+    """
+    def __init__(self, suffix="", prefix="tmp", dir=None, delete=True):
+        self.name = tempfile.mkdtemp(suffix, prefix, dir)
+        self._finalizer = weakref.finalize(
+            self,
+            self._cleanup,
+            self.name,
+            warn_message="Implicitly cleaning up {!r}".format(self))
+        signal.signal(signal.SIGINT, self.force_cleanup)
+        signal.signal(signal.SIGTERM, self.force_cleanup)
+
+    @classmethod
+    def _cleanup(cls, name, warn_message):
+        shutil.rmtree(name)
+        warnings.warn(warn_message, ResourceWarning)
+
+    def __repr__(self):
+        return "<{} {!r}>".format(self.__class__.__name__, self.name)
+
+    def __enter__(self):
+        return self.name
+
+    def __exit__(self, exc, value, tb):
+        self.cleanup()
+
+    def cleanup(self):
+        if self.delete:
+            if self._finalizer.detach():
+                shutil.rmtree(self.name)
+
+    def force_cleanup(self, signum, frame):
+        logging.error('Process killed with signal: {}'.format(signum))
+        self.cleanup()
+        exit(signum)
+
 
 
 # TODO: Implement better sys.path cleaning
@@ -508,7 +556,9 @@ if need_unzip and isinstance(__loader__, zipimport.zipimporter):
     # Adding a separate signal handler to deal with this case.
     old_handler = None
     def sig_exit(*args):
-        clean_tempdir_parent_only(tempdir)
+        print(signum)
+        logging.error(signum)
+		clean_tempdir_parent_only(tempdir)
         if old_handler:
             old_handler(*args)
     old_handler = signal.signal(signal.SIGTERM, sig_exit)
