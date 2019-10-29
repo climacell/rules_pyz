@@ -21,7 +21,7 @@ jobs:
       - run:
           name: Run blackduck
           command: |
-            bash <(curl -s -L ${BD_DETECT_URL}) --blackduck.url="${BD_CLIMACELL_APP_URL}" --blackduck.api.token="${BD_API_TOKEN}" --detect.project.name="ldm-config-prod" --detect.project.version.name="production" --detect.pip.requirements.path="requirements.txt"
+            bash <(curl -s -L ${BD_DETECT_URL}) --blackduck.url="${BD_CLIMACELL_APP_URL}" --blackduck.api.token="${BD_API_TOKEN}" --detect.project.name="rules_pyz" --detect.project.version.name="production" --detect.pip.requirements.path="requirements.txt"
 
 workflows:
   version: 2
